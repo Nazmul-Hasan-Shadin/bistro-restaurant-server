@@ -54,7 +54,7 @@ const verifyToken= (req,res,next)=>{
     return res.status(401).send({message: 'forbidden access'})
    }
 
-   req.decoded=decoded;
+   req.decoded=decoded
    next()
 
  })
@@ -140,9 +140,14 @@ const verifyAdmin= async(req,res,next)=>{
 
 // menu related api
 
-  app.get('/menu',async(req,res)=>{
+  app.get('/menu', async(req,res)=>{
     const result=await menueCollection.find().toArray()
     res.send(result)
+  })
+
+  app.patch('/menu/:id',async(req,res)=>{
+
+    
   })
 
 app.post('/menu',async(req,res)=>{
@@ -150,6 +155,23 @@ app.post('/menu',async(req,res)=>{
   const result= await menueCollection.insertOne(item)
   res.send(result)
 
+})
+
+app.get('/menu/:id',async(req,res)=>{
+  const id = req.params.id;
+  const query= {_id:id}
+  const result=await menueCollection.findOne(query)
+  res.send(result)
+})
+
+
+app.delete('/menu/:id',verifyToken,verifyAdmin,async(req,res)=>{
+
+  const id = req.params.id;
+
+  // const query={_id: new ObjectId(id)}
+  const result= await menueCollection.deleteOne({_id:id})
+  res.send(result)
 })
  
 
