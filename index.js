@@ -35,16 +35,17 @@ async function run() {
   
   
   // middlewares
-
+ 
 const verifyToken= (req,res,next)=>{
+  console.log('insider of verify',req.headers.authorization);
   if (!req.headers.authorization) {
-    return res.status(401).send({message: 'forbidden access'})
+    return res.status(401).send({message: 'unauthorized access'})
   };
 
 
   const token = req.headers.authorization.split(' ')[1]
   if (!token) {
-    return res.status(401).send({message: 'forbidden access'})
+    return res.status(401).send({message: 'unauthorized access'})
   }
 
  jwt.verify(token,process.env.ACCESS_TOKEN_SECRET,(err,decoded)=>{
@@ -57,14 +58,44 @@ const verifyToken= (req,res,next)=>{
    next()
 
  })
-
+ 
 
 
   
 
 }  
 
-  app.patch('/users/admin/:id',async(req,res)=>{
+// use verify admin after verify admin
+const verifyAdmin= async(req,res,next)=>{
+   const email= req.decoded.email;
+   const query= {email:email}
+   const user= await userCollection.findOne(query)
+   const isAdmin= user?.role==='admin';
+   if (!isAdmin) {
+    return res.status(403).send({message:'forbidden access'})
+   }
+   next()
+}
+
+
+ app.get('/users/admin/:email' ,verifyToken,async(req,res)=>{
+   const email=req.params.email
+    if (email !==req.decoded.email) {
+       return res.status(403).send({message:'unauthorize access'})
+    }
+
+    const query= {email:email}
+    const user= await userCollection.findOne(query)
+    let admin= false
+    if (user) {
+      admin=user?.role==='admin';
+
+    }
+    res.send({admin})
+ })
+
+
+  app.patch('/users/admin/:id', verifyAdmin, verifyToken,async(req,res)=>{
     const id = req.params.id; 
     const filter= {_id: new ObjectId(id)}
     const updatedDoc= {
@@ -79,7 +110,7 @@ const verifyToken= (req,res,next)=>{
   })
 
 
-  app.delete('/users/:id',async(req,res)=>{
+  app.delete('/users/:id', verifyAdmin,verifyToken,async(req,res)=>{
     const id = req.params.id;
     const query= {_id: new ObjectId(id)}
    const result= await userCollection.deleteOne(query)
@@ -88,7 +119,7 @@ const verifyToken= (req,res,next)=>{
 
   //  user related api
  
-  app.get('/users',verifyToken, async(req,res)=>{
+  app.get('/users',verifyToken,verifyAdmin, async(req,res)=>{
 
 
     const result = await userCollection.find().toArray();
@@ -113,6 +144,15 @@ const verifyToken= (req,res,next)=>{
     const result=await menueCollection.find().toArray()
     res.send(result)
   })
+
+app.post('/menu',async(req,res)=>{
+  const item =req.body;
+  const result= await menueCollection.insertOne(item)
+  res.send(result)
+
+})
+ 
+
   app.get('/reviews',async(req,res)=>{
     const result=await menueCollection.find().toArray()
     res.send(result)
